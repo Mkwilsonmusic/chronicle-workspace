@@ -1,3 +1,4 @@
+
 # Chronicle — Workspace Root
 
 > **Note to Claude**: When you make significant changes during a session (new endpoints, schema changes, new screens, infra updates, bug fixes, etc.), update this file and the relevant sub-project CLAUDE.md to keep them accurate. Add changelog entries where appropriate.
