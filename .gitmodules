@@ -1,0 +1,16 @@
+[submodule "chronicle-api"]
+	path = chronicle-api
+	url = https://github.com/Mkwilsonmusic/chronicle-api.git
+	branch = main
+[submodule "chronicle-flutter"]
+	path = chronicle-flutter
+	url = https://github.com/Mkwilsonmusic/chronicle-flutter.git
+	branch = main
+[submodule "chronicle-tts"]
+	path = chronicle-tts
+	url = https://github.com/Mkwilsonmusic/chronicle-tts.git
+	branch = main
+[submodule "chronicle-deployment"]
+	path = chronicle-deployment
+	url = https://github.com/Mkwilsonmusic/chronicle-deployment.git
+	branch = main
