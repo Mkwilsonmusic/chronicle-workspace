@@ -121,3 +121,23 @@ PostgreSQL 16 in Docker. Key tables: `users`, `novels`, `novel_chapters`, `novel
 - When modifying deploy config, work inside `chronicle-deployment/`. Test with `gh workflow run`.
 - The `docker-compose.yml` at workspace root is for **local development**. The production compose file lives in `chronicle-deployment/`.
 - Each sub-project is its own git repo. Commit changes within the appropriate directory.
+
+## Git Submodule Workflow
+
+This workspace (`chronicle-workspace`) is a parent repo with 4 git submodules:
+- `chronicle-api`, `chronicle-flutter`, `chronicle-tts`, `chronicle-deployment`
+
+All submodules track the `main` branch. **When committing changes to a sub-project, always follow this two-step process:**
+
+1. **Commit and push inside the submodule** — `cd` into the sub-project, stage, commit, and push as normal.
+2. **Update the parent workspace repo** — back in the workspace root, the submodule will show as modified (new commit ref). Stage the submodule, commit the updated reference, and push the workspace repo.
+
+```bash
+# Example: after committing inside chronicle-api
+cd C:\Users\Mike\Documents\workspace
+git add chronicle-api
+git commit -m "Update chronicle-api submodule reference"
+git push
+```
+
+This keeps the workspace repo in sync with the latest commit of each sub-project. **Never skip step 2** — the workspace should always reflect the current state of all submodules.
