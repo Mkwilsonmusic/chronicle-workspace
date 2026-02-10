@@ -127,7 +127,7 @@ PostgreSQL 16 in Docker. Key tables: `users`, `novels`, `novel_chapters`, `novel
 
 This workspace (`chronicle-workspace`) is a parent repo with 4 git submodules:
 - `chronicle-api`, `chronicle-flutter`, `chronicle-tts`, `chronicle-deployment`
-
+ou
 All submodules track the `main` branch. **When committing changes to a sub-project, always follow this two-step process:**
 
 1. **Commit and push inside the submodule** — `cd` into the sub-project, stage, commit, and push as normal.
