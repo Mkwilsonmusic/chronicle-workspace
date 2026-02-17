@@ -139,6 +139,7 @@ cd C:\Users\Mike\Documents\workspace
 git add chronicle-api
 git commit -m "Update chronicle-api submodule reference"
 git push
+
 ```
 
 This keeps the workspace repo in sync with the latest commit of each sub-project. **Never skip step 2** — the workspace should always reflect the current state of all submodules.
