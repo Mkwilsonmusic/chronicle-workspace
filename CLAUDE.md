@@ -123,6 +123,55 @@ PostgreSQL 16 in Docker. Key tables: `users`, `novels`, `novel_chapters`, `novel
 - The `docker-compose.yml` at workspace root is for **local development**. The production compose file lives in `chronicle-deployment/`.
 - Each sub-project is its own git repo. Commit changes within the appropriate directory.
 
+## Production API Workflow
+
+Parse tickets and preprocessing issues are reported from production. To investigate:
+
+**1. Login to production API:**
+```bash
+# Credentials: mkwilson.music@gmail.com / password
+# Login endpoint is rate-limited to 5/min - don't spam it
+TOKEN=$(curl -s -X POST "https://my-chronicle.com/api/login" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{"email":"mkwilson.music@gmail.com","password":"password"}' \
+  | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
+```
+
+**2. Query parse tickets:**
+```bash
+# List open tickets
+curl -s "https://my-chronicle.com/api/parse-tickets?status=open" \
+  -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" | jq .
+
+# Get ticket summary (counts by status)
+curl -s "https://my-chronicle.com/api/parse-tickets/summary" \
+  -H "Authorization: Bearer $TOKEN" -H "Accept: application/json"
+```
+
+**3. Pull chapter content for context:**
+```bash
+# Get paragraphs with table detection status
+curl -s "https://my-chronicle.com/api/chapters/{id}/paragraphs" \
+  -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" \
+  | jq '.paragraphs[] | {order, content, is_table_row, table_data}'
+```
+
+**4. Resolve tickets after fixing:**
+```bash
+curl -s -X PATCH "https://my-chronicle.com/api/parse-tickets/{id}" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"status":"resolved","resolution_notes":"Fixed in commit abc123"}'
+```
+
+**Key endpoints for preprocessing work:**
+- `GET /api/chapters/{id}/preprocess/preview` — preview what would change
+- `POST /api/chapters/{id}/preprocess` — apply preprocessing
+- `GET /api/chapters/{id}/tables/preview` — preview table detection
+- `POST /api/chapters/{id}/tables/detect` — apply table detection
+- `DELETE /api/chapters/{id}/tables` — clear table detection data
+
 ## Git Submodule Workflow
 
 This workspace (`chronicle-workspace`) is a parent repo with 4 git submodules:
