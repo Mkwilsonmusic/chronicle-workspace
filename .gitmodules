@@ -14,3 +14,6 @@
 	path = chronicle-deployment
 	url = https://github.com/Mkwilsonmusic/chronicle-deployment.git
 	branch = main
+[submodule "chronicle-admin"]
+	path = chronicle-admin
+	url = git@github.com:Mkwilsonmusic/chronicle-admin.git
