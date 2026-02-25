@@ -1,194 +1,76 @@
-
 # Chronicle — Workspace Root
-
-> **Note to Claude**: When you make significant changes during a session (new endpoints, schema changes, new screens, infra updates, bug fixes, etc.), update this file and the relevant sub-project CLAUDE.md to keep them accurate. Add changelog entries where appropriate.
 
 ## What Is Chronicle
 
-A novel reading platform. Users authenticate, scrape novels from external sources (NovelBin), and read them chapter-by-chapter via a mobile app and web app, with server-side TTS support (Kokoro). Production URL: `https://my-chronicle.com`
+Novel reading platform with server-side TTS (Kokoro). Users scrape novels from NovelBin, read chapter-by-chapter via mobile/web app. Production: `https://my-chronicle.com`
 
 ## Repository Map
 
-| Directory | Purpose | Tech | Git Repo |
-|-----------|---------|------|----------|
-| `chronicle-api/` | REST API backend | Laravel 11, PHP 8.4, PostgreSQL 16 | Yes |
-| `chronicle-flutter/` | Mobile + web client (Android/iOS/Web) | Flutter, Dart, Provider | Yes |
-| `chronicle-tts/` | Internal TTS service | Python 3.12, FastAPI, Kokoro TTS, S3 | Yes |
-| `chronicle-deployment/` | Deploy orchestration, CI/CD | Docker Compose, GitHub Actions | Yes |
-| `docker/` | Shared Docker configs (nginx, PHP, cloudflared) | Config files only | No (part of root) |
+| Directory | Purpose | Tech |
+|-----------|---------|------|
+| `chronicle-api/` | REST API backend | Laravel 11, PHP 8.4, PostgreSQL 16 |
+| `chronicle-flutter/` | Mobile + web client | Flutter, Dart, Provider |
+| `chronicle-tts/` | TTS service | Python 3.12, FastAPI, Kokoro |
+| `chronicle-deployment/` | CI/CD, Docker configs | Docker Compose, GitHub Actions |
 
-Each sub-project has its own `CLAUDE.md` with detailed context. Read those for deep dives.
+Each sub-project has its own `CLAUDE.md`.
 
-## Architecture Overview
+## Architecture
 
 ```
-[Flutter Mobile App]    [Flutter Web App]
-        │                      │
-        └──────────┬───────────┘
-                   ▼  (HTTPS)
-[Cloudflare Tunnel] ── my-chronicle.com
-        │
-        ├── /app (WebSocket) ───▶ [Reverb :8080] ── Laravel Reverb
-        │
-        ▼  (HTTP)
-[nginx :80] ── reverse proxy
-        │
-        ▼  (FastCGI :9000)
-[Laravel App] ── PHP-FPM ──┬──▶ [Queue Worker] ── Background Jobs
-        │                   │
-        ├───────────────────┘
-        │
-        ▼  (TCP :5432)
-[PostgreSQL 16]
-
-[chronicle-tts :8000] ◀── TTS generation requests (internal)
-        │
-        ▼
-[S3 Bucket] ── Audio file storage
+[Flutter App] → [Cloudflare Tunnel] → [nginx :80] → [Laravel/PHP-FPM :9000]
+                                                            ↓
+                                                    [PostgreSQL :5432]
+                                                            ↓
+[chronicle-tts :8000] ← TTS requests ← [Queue Worker]
+        ↓
+   [S3 Bucket]
 ```
-
-All services run as Docker containers orchestrated by `docker-compose.yml`.
 
 ## Running Locally
 
 ```bash
-cd C:\Users\Mike\Documents\workspace
-docker compose up -d
+docker compose up -d          # Start all containers
+cd chronicle-flutter && flutter run -d chrome  # Web dev
 ```
 
-Starts containers: `postgres_db`, `laravel_app`, `nginx`, `chronicle_tts`, `chronicle_reverb`, `chronicle_queue`. API available at `http://localhost/api`. WebSocket available at `ws://localhost/app`.
+Local API: `http://localhost/api` | WebSocket: `ws://localhost/app`
 
-For Flutter development:
-```bash
-cd chronicle-flutter
-flutter run -d chrome    # Web: auto-connects to http://localhost/api
-flutter run -d <device>  # iOS/Android: auto-connects to https://my-chronicle.com/api
-```
+## Key Endpoints
 
-No Cloudflare tunnel locally — that's production only.
+- **Auth**: `/api/login`, `/api/register`, `/api/auth/google/callback`
+- **Novels**: `/api/novels/subscribed`, `/api/novels/search?q=`, `/api/novels/scrape`
+- **Chapters**: `/api/chapters/{id}/paragraphs`, `/api/chapters/{id}/scrape-content`
+- **TTS**: `POST /api/chapters/{id}/tts`, `GET /api/chapters/{id}/tts`
+- **Preprocessing**: `/api/chapters/{id}/preprocess`, `/api/chapters/{id}/tables/detect`
 
-## Key URLs & Endpoints
-
-- **Production**: `https://my-chronicle.com/api` (also referred to as `www.my-chronicle` / "live")
-- **Local**: `http://localhost/api`
-- **Flutter emulator**: `http://10.0.2.2/api` (Android emulator to host)
-- **Health check**: `GET /up`
-- **Auth**: `/api/register`, `/api/login`, `/api/auth/google/callback`
-- **Novels**: `/api/novels`, `/api/novels/subscribed`, `/api/novels/search?q=`, `/api/novels/{id}`, `/api/novels/{id}/chapters`
-- **Reading**: `/api/chapters/{id}/paragraphs`
-- **Scraping**: `/api/novels/scrape` (scrapes novel + chapters), `/api/chapters/{id}/scrape-content`
-- **TTS**: `POST /api/chapters/{id}/tts` (request generation), `GET /api/chapters/{id}/tts` (get cached)
-- **WebSocket**: `ws://localhost/app` (local), `wss://my-chronicle.com/app` (prod) — channel `private-tts.chapter.{id}` for TTS ready events
-
-All novel/chapter/scrape/TTS endpoints require `Authorization: Bearer <token>` (Sanctum, 30-day expiry).
+All require `Authorization: Bearer <token>` (Sanctum, 30-day expiry).
 
 ## Infrastructure
 
-- **VM**: AWS EC2 (IP stored in `VM_HOST` GitHub Secret), user `ec2-user`, SSH key in `VM_SSH_KEY` secret
-- **App dir on VM**: `/opt/chronicle`
-- **Container registry**: `ghcr.io/mkwilsonmusic/` (chronicle-api, chronicle-flutter, and chronicle-tts images)
-- **GitHub owner**: `Mkwilsonmusic`
-- **Deploy**: Manual trigger via `gh workflow run` on chronicle-deployment repo. Fully automated — handles fresh servers (bootstrap + setup) and existing servers (sync files + update containers). All secrets stored in GitHub Secrets, `.env` generated on each deploy.
-- **Backups**: `pg_dump` at midnight in backup container; host cron syncs to `chronicle-backup` repo at 1 AM
-- **gh CLI path**: `"C:\Program Files\GitHub CLI\gh.exe"` (not in default bash PATH)
+- **VM**: AWS EC2 at `/opt/chronicle`
+- **Registry**: `ghcr.io/mkwilsonmusic/`
+- **Deploy**: `gh workflow run` on chronicle-deployment repo
+- **Database**: PostgreSQL 16, volume `dbdata`
 
-## Database
+## Production API Access
 
-PostgreSQL 16 in Docker. Key tables: `users`, `novels`, `novel_chapters`, `novel_chapter_paragraphs`, `novel_user` (subscriptions), `personal_access_tokens`, `chapter_tts` (TTS cache). Data persists in `dbdata` Docker volume.
-
-## Auth System
-
-- **Email/password**: Register → Sanctum token. Login → Sanctum token. 30-day expiry.
-- **Google OAuth**: Flutter gets `id_token` → POST to `/api/auth/google/callback` → Sanctum token.
-- **Fortify**: Used only for user creation and password reset actions; routes are disabled.
-
-## Cross-Project Conventions
-
-- API responses are always JSON (`Accept: application/json` enforced)
-- Laravel validation errors: `{errors: {field: [messages]}}` — Flutter's `ApiException.firstError` extracts the first
-- Scraping uses `updateOrCreate` to avoid duplicates on re-scrape
-- Cascade deletes: novel → chapters → paragraphs; user → subscriptions
-- Flutter state: Provider/ChangeNotifier for global auth, `setState` for screen-local state
-
-## Known Issues
-
-1. **API**: `laravel/scout` and `clickbar/laravel-magellan` are installed but unused — can be removed to clean up dependencies
-2. **Deployment**: GitHub PAT will eventually expire — update the `GH_PAT` GitHub Secret on the chronicle-deployment repo when it does (`.env` is regenerated from secrets on each deploy)
-
-## Working in This Workspace
-
-- When modifying API code, work inside `chronicle-api/`. Run `docker compose up -d` from workspace root to test.
-- When modifying Flutter code, work inside `chronicle-flutter/`. Use `flutter run` from that directory.
-- When modifying deploy config, work inside `chronicle-deployment/`. Test with `gh workflow run`.
-- The `docker-compose.yml` at workspace root is for **local development**. The production compose file lives in `chronicle-deployment/`.
-- Each sub-project is its own git repo. Commit changes within the appropriate directory.
-
-## Production API Workflow
-
-Parse tickets and preprocessing issues are reported from production. To investigate:
-
-**1. Login to production API:**
 ```bash
-# Credentials: mkwilson.music@gmail.com / password
-# Login endpoint is rate-limited to 5/min - don't spam it
 TOKEN=$(curl -s -X POST "https://my-chronicle.com/api/login" \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json" \
+  -H "Content-Type: application/json" -H "Accept: application/json" \
   -d '{"email":"mkwilson.music@gmail.com","password":"password"}' \
   | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
-```
 
-**2. Query parse tickets:**
-```bash
-# List open tickets
-curl -s "https://my-chronicle.com/api/parse-tickets?status=open" \
-  -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" | jq .
-
-# Get ticket summary (counts by status)
-curl -s "https://my-chronicle.com/api/parse-tickets/summary" \
+curl -s "https://my-chronicle.com/api/chapters/{id}/paragraphs" \
   -H "Authorization: Bearer $TOKEN" -H "Accept: application/json"
 ```
 
-**3. Pull chapter content for context:**
-```bash
-# Get paragraphs with table detection status
-curl -s "https://my-chronicle.com/api/chapters/{id}/paragraphs" \
-  -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" \
-  | jq '.paragraphs[] | {order, content, is_table_row, table_data}'
-```
-
-**4. Resolve tickets after fixing:**
-```bash
-curl -s -X PATCH "https://my-chronicle.com/api/parse-tickets/{id}" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"status":"resolved","resolution_notes":"Fixed in commit abc123"}'
-```
-
-**Key endpoints for preprocessing work:**
-- `GET /api/chapters/{id}/preprocess/preview` — preview what would change
-- `POST /api/chapters/{id}/preprocess` — apply preprocessing
-- `GET /api/chapters/{id}/tables/preview` — preview table detection
-- `POST /api/chapters/{id}/tables/detect` — apply table detection
-- `DELETE /api/chapters/{id}/tables` — clear table detection data
-
 ## Git Submodule Workflow
 
-This workspace (`chronicle-workspace`) is a parent repo with 4 git submodules:
-- `chronicle-api`, `chronicle-flutter`, `chronicle-tts`, `chronicle-deployment`
-ou
-All submodules track the `main` branch. **When committing changes to a sub-project, always follow this two-step process:**
+1. Commit inside submodule, push
+2. In workspace root: `git add <submodule> && git commit -m "Update submodule" && git push`
 
-1. **Commit and push inside the submodule** — `cd` into the sub-project, stage, commit, and push as normal.
-2. **Update the parent workspace repo** — back in the workspace root, the submodule will show as modified (new commit ref). Stage the submodule, commit the updated reference, and push the workspace repo.
+## Known Issues
 
-```bash
-# Example: after committing inside chronicle-api
-cd C:\Users\Mike\Documents\workspace
-git add chronicle-api
-git commit -m "Update chronicle-api submodule reference"
-git push
-
-```
-
-This keeps the workspace repo in sync with the latest commit of each sub-project. **Never skip step 2** — the workspace should always reflect the current state of all submodules.
+1. `laravel/scout` and `clickbar/laravel-magellan` unused in API
+2. GitHub PAT will expire — update `GH_PAT` secret when needed
