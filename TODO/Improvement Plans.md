@@ -12,12 +12,12 @@
 
 ---
 
-## PHASE 2 — Character Improvements
+## PHASE 2 — Character Improvements ✅ DONE
 
-### 2a — Spoiler-Safe Character Detail View (Flutter only)
-- Character list should be tappable into a full detail screen (currently shows a bottom sheet — consider promoting to full screen for richer content).
-- Character events should be **hidden beyond the user's current bookmark chapter** — only show events from chapters they've already reached. API already supports `up_to_chapter` param.
-- Characters themselves should be **hidden** until the chapter where the LLM first detected them (`first_appearance_chapter_id`). Don't show a character to the reader before they've encountered them.
+### 2a — Spoiler-Safe Character Detail View (Flutter only) ✅ DONE
+- ✅ `CharacterListScreen` filters characters by `firstAppearanceChapter.chapter_index ≤ bookmarkChapterIndex` — characters not yet encountered are hidden.
+- ✅ `novel_detail_screen` passes `bookmarkChapterId` + `bookmarkChapterIndex` (looked up from loaded `_chapters`) when navigating to `/characters`.
+- ✅ `CharacterSheet.show` called with `currentChapterId: bookmarkChapterId` so events are gated to the reader's current position.
 
 ### 2b — Two-Pass LLM Processing + Character Relationships ✅ DONE (API/backend)
 
@@ -39,8 +39,7 @@
 - ✅ Admin api.js: `processChapterNarrative()`, `processChaptersNarrative()`
 
 **Still needed (Flutter):**
-- Character sheet relations tab — call `GET /characters/{id}/relations` and display
-- Existing narrative chapters: run `POST /admin/novels/{id}/llm-narrative` to backfill Pass 2
+- Character sheet relations tab — call `GET /characters/{id}/relations` and display (deferred to Phase 5 polish)
 
 ---
 
@@ -144,4 +143,4 @@ Change `"centered head only, no neck or shoulders"` → `"head and shoulders por
 
 ---
 
-*Last updated: 2026-02-27 — Phase 1 complete, Phase 2b backend complete*
+*Last updated: 2026-02-28 — Phase 1 complete, Phase 2 complete*
