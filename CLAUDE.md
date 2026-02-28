@@ -55,10 +55,12 @@ All require `Authorization: Bearer <token>` (Sanctum, 30-day expiry).
 
 ## Production API Access
 
+Use admin credentials for all production API testing (required for `/api/admin/*` endpoints):
+
 ```bash
 TOKEN=$(curl -s -X POST "https://my-chronicle.com/api/login" \
   -H "Content-Type: application/json" -H "Accept: application/json" \
-  -d '{"email":"mkwilson.music@gmail.com","password":"password"}' \
+  -d '{"email":"admin@my-chronicle.com","password":"JCCudlPq1MKGoVGVOGsA"}' \
   | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
 
 curl -s "https://my-chronicle.com/api/chapters/{id}/paragraphs" \
