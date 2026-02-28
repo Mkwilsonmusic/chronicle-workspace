@@ -43,47 +43,18 @@
 
 ---
 
-## PHASE 3 — Non-Human Character Support (Animals, Mythical Creatures, Beasts)
+## PHASE 3 — Non-Human Character Support ✅ DONE
 
-Web novels are full of non-human characters — loyal spirit beasts, monster companions, elves, orcs, dragons, etc. The current system assumes all characters are human, which breaks avatar generation and limits character depth.
-
-### 3a — DB: Add `race` column to `novel_characters`
-
-- **New column**: `race` (varchar 100, nullable, default `human`)
-- Examples: `human`, `elf`, `orc`, `dwarf`, `dragon`, `wolf`, `beast`, `spirit_beast`, `demon`, `undead`, `fairy`, `automaton`
-- **No change needed to `gender`** — animals and mythical creatures can still be male/female for TTS voice assignment. Gender stays as-is.
-- Migration: `ALTER TABLE novel_characters ADD COLUMN race VARCHAR(100) DEFAULT 'human'`
-
-### 3b — LLM: Update character extraction prompt
-
-Update `buildCharacterExtractionPrompt` in `LlmProcessingService` to:
-- Add `race` to the extraction schema (e.g. `"race": "spirit_beast"`)
-- Update appearance guidance to note species-specific features (e.g. pointed ears for elves, fur/claws for beasts)
-- Updated voice_suggestion should still map to the human voice categories — a male wolf beast gets `mature_male`, etc.
-- Example addition to the extraction system prompt:
-  ```
-  - race: The character's species/race. Use "human" as default. For non-humans use descriptive terms like:
-    "elf", "orc", "dwarf", "dragon", "spirit_beast", "demon_beast", "wolf_beast", "fairy", "undead", etc.
-    Be specific where the text allows (e.g. "black-scaled dragon" → race: "dragon").
-  ```
-
-Also update `buildChapterProcessingPrompt` so `new_characters` includes `race`.
-
-### 3c — Avatar prompt: Handle non-human races
-
-Update `buildPrompt` in `CharacterImageService`:
-- Check `character->race` — if not human, inject the race prominently into the prompt.
-- For beasts/animals: describe the animal form, not a human.
-- For humanoid races (elf, orc, dwarf): describe human-like figure with species traits.
-- Example:
-  - Human: `"young adult male, lean athletic build, short black hair"` → standard anime portrait
-  - Elf: `"young adult male elf, long pointed ears, ethereal pale skin, silver hair"`
-  - Spirit Beast / Wolf: `"anthropomorphic wolf spirit beast, silver fur, piercing amber eyes, proud bearing"` — head-and-shoulders portrait
-  - Dragon: `"dragon character icon, reptilian head and neck, scales, fierce golden eyes, smoke at nostrils"`
+- ✅ DB migration: `race` varchar(100) default 'human' added to `novel_characters`
+- ✅ `NovelCharacter` model: `race` in fillable; `CharacterController` validates + returns `race`
+- ✅ LLM prompts: both `buildCharacterExtractionPrompt` and `buildChapterProcessingPrompt` include `race`; appearance guidance covers species-specific features; voice_suggestion still maps to human voice categories
+- ✅ Avatar prompt: `CharacterImageService.buildPrompt()` is race-aware — humans get standard descriptor, humanoid races (elf, orc, dwarf, demon, undead, fairy) get species traits, beast/dragon characters get non-human form descriptions
+- ✅ Avatar style upgraded from flat vector icon → anime cel-shading portrait with expressive eyes and richer personality trait → expression mapping (Phase 4 items folded in)
+- ✅ Flutter: `NovelCharacter` model has `race` field, `isHuman` getter, `displayRace` helper; character list tiles and character sheet show race for non-humans
 
 ---
 
-## PHASE 4 — Avatar Prompt Overhaul (Anime Style, More Personality)
+## PHASE 4 — Avatar Prompt Overhaul (Anime Style, More Personality) ✅ DONE (folded into Phase 3)
 
 **Problem with current prompt:**
 > `"Minimalist character icon: {descriptor}. Style: flat vector icon, single solid color silhouette with simple facial features. Pure white background, centered head only, no neck or shoulders."`
@@ -143,4 +114,4 @@ Change `"centered head only, no neck or shoulders"` → `"head and shoulders por
 
 ---
 
-*Last updated: 2026-02-28 — Phase 1 complete, Phase 2 complete*
+*Last updated: 2026-02-28 — Phases 1–4 complete*
