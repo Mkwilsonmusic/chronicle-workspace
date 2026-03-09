@@ -2,7 +2,7 @@
 
 ## What Is Chronicle
 
-Novel reading platform with server-side TTS (Kokoro). Users scrape novels from NovelBin, read chapter-by-chapter via mobile/web app. Production: `https://my-chronicle.com`
+Novel reading platform with server-side TTS (Kokoro, ElevenLabs, OpenAI). Users scrape novels from NovelBin, read chapter-by-chapter via mobile/web app. Production: `https://my-chronicle.com`
 
 ## Repository Map
 
@@ -10,7 +10,8 @@ Novel reading platform with server-side TTS (Kokoro). Users scrape novels from N
 |-----------|---------|------|
 | `chronicle-api/` | REST API backend | Laravel 11, PHP 8.4, PostgreSQL 16 |
 | `chronicle-flutter/` | Mobile + web client | Flutter, Dart, Provider |
-| `chronicle-tts/` | TTS service | Python 3.12, FastAPI, Kokoro |
+| `chronicle-tts/` | TTS service | Python 3.12, FastAPI, Kokoro/ElevenLabs/OpenAI |
+| `chronicle-admin/` | Admin dashboard | Vue 3, Vite, Tailwind CSS |
 | `chronicle-deployment/` | CI/CD, Docker configs | Docker Compose, GitHub Actions |
 
 Each sub-project has its own `CLAUDE.md`.
@@ -55,7 +56,9 @@ All require `Authorization: Bearer <token>` (Sanctum, 30-day expiry).
 
 ## Production API Access
 
-Use admin credentials for all production API testing (required for `/api/admin/*` endpoints):
+Use the `/api-login` slash command to authenticate and cache a token. Other `/api-*` commands handle token reuse automatically.
+
+Manual access with admin credentials (required for `/api/admin/*` endpoints):
 
 ```bash
 TOKEN=$(curl -s -X POST "https://my-chronicle.com/api/login" \
